@@ -66,7 +66,9 @@ def llm_break_tie(col_name: str, field_a: str, field_b: str) -> str | None:
     Returns the chosen field name, or None if no model configured / unsure."""
     model = get_chat_model()
     if model is None:
+        print(f"[llm_break_tie] no model configured (LLM_PROVIDER={os.environ.get('LLM_PROVIDER')!r}), skipping LLM for column {col_name!r}")
         return None
+    print(f"[llm_break_tie] calling {type(model).__name__} (model={getattr(model, 'model', '?')}) for column {col_name!r}")
     prompt = (
         f"Source spreadsheet column '{col_name}' maps to one of two target "
         f"employee-schema fields: '{field_a}' or '{field_b}'. "
@@ -75,8 +77,10 @@ def llm_break_tie(col_name: str, field_a: str, field_b: str) -> str | None:
     )
     try:
         reply = model.invoke(prompt).content.strip()
-    except Exception:
+    except Exception as e:
+        print(f"[llm_break_tie] call failed: {e}")
         return None
+    print(f"[llm_break_tie] reply: {reply!r}")
     if reply in (field_a, field_b):
         return reply
     return None
