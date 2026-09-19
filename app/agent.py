@@ -222,6 +222,15 @@ class MigrationAgent:
     def clean_and_validate(self, df: pd.DataFrame):
         seen_ids = set()
         for idx, row in df.iterrows():
+            raw_emp_id = str(row.get("employee_id", "")).strip().upper() or None
+            if raw_emp_id and raw_emp_id in seen_ids:
+                self._emit(f"Dropped duplicate record for employee_id={raw_emp_id} (row {idx})")
+                self.audit.append({
+                    "ts": datetime.utcnow().isoformat(), "action": "dedupe",
+                    "employee_id": raw_emp_id, "detail": f"row {idx} duplicate of earlier record, dropped before cleaning",
+                })
+                continue
+
             record = {}
             row_ok = True
             for field in self.schema_fields:
@@ -265,13 +274,6 @@ class MigrationAgent:
                 record[field] = cleaned
 
             emp_id = record.get("employee_id")
-            if emp_id and emp_id in seen_ids:
-                self._emit(f"Dropped duplicate record for employee_id={emp_id} (row {idx})")
-                self.audit.append({
-                    "ts": datetime.utcnow().isoformat(), "action": "dedupe",
-                    "employee_id": emp_id, "detail": f"row {idx} duplicate of earlier record, dropped",
-                })
-                continue
             if emp_id:
                 seen_ids.add(emp_id)
 
