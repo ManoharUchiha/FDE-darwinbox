@@ -51,11 +51,6 @@ def resolve(escalation_id: str, body: ResolveBody):
         esc = agent.resolve_escalation(escalation_id, body.decision, body.value)
     except ValueError:
         raise HTTPException(404, "escalation not found")
-
-    if body.decision in ("approve", "correct") and esc["type"] == "cleanup":
-        val = body.value if body.decision == "correct" else esc["raw_value"]
-        agent._emit(f"Row {esc['row_index']} field '{esc['field']}' resolved to '{val}' by human")
-
     return esc
 
 

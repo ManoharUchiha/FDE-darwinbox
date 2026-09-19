@@ -175,6 +175,7 @@ class MigrationAgent:
         self.log: list[dict] = []
         self.escalations: list[dict] = []
         self.records: dict[str, dict] = {}  # employee_id -> cleaned record
+        self.pending_rows: dict[int, dict] = {}  # row_index -> partial record awaiting escalation resolution
         self.audit: list[dict] = []
 
     def _emit(self, message: str, level: str = "info"):
@@ -280,8 +281,16 @@ class MigrationAgent:
                     "ts": datetime.utcnow().isoformat(), "action": "clean_ok",
                     "employee_id": emp_id, "detail": "cleaned and validated",
                 })
+            elif not row_ok:
+                self.pending_rows[int(idx)] = record
 
         self._emit(f"Clean pass complete: {len(self.records)} records ready, {len(self.escalations)} escalations")
+
+    def _row_has_pending_escalations(self, row_idx: int) -> bool:
+        return any(
+            e.get("row_index") == row_idx and e["status"] == "pending"
+            for e in self.escalations
+        )
 
     def resolve_escalation(self, escalation_id: str, decision: str, value=None):
         esc = next((e for e in self.escalations if e["id"] == escalation_id), None)
@@ -295,7 +304,24 @@ class MigrationAgent:
         })
         self._emit(f"Human {decision} escalation {escalation_id[:8]}")
 
-        if decision == "approve" and esc["type"] == "cleanup" and value is not None:
-            row_idx = esc["row_index"]
-            self._emit(f"Applying human-approved value for row {row_idx} field {esc['field']}")
+        row_idx = esc.get("row_index")
+        if row_idx is not None and decision in ("approve", "correct") and "field" in esc:
+            record = self.pending_rows.setdefault(row_idx, {})
+            resolved_value = value if decision == "correct" else esc.get("raw_value")
+            record[esc["field"]] = resolved_value
+            self._emit(f"Applying human-{decision}ed value for row {row_idx} field '{esc['field']}': '{resolved_value}'")
+
+            if not self._row_has_pending_escalations(row_idx):
+                emp_id = record.get("employee_id")
+                if emp_id:
+                    self.records[emp_id] = record
+                    self.pending_rows.pop(row_idx, None)
+                    self.audit.append({
+                        "ts": datetime.utcnow().isoformat(), "action": "clean_ok",
+                        "employee_id": emp_id, "detail": f"row {row_idx} completed via human resolution",
+                    })
+                    self._emit(f"Row {row_idx} record for {emp_id} now complete — added to push queue")
+                else:
+                    self._emit(f"Row {row_idx} still missing employee_id — cannot add to push queue", "warn")
+
         return esc
