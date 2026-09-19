@@ -9,6 +9,26 @@ with a human-in-the-loop web console.
 - Data: pandas, PyYAML
 - Frontend: static HTML/CSS/vanilla JS (no build step)
 - Mock target system: in-process stub (`app/target_api.py`)
+- LLM (optional): LangChain `init_chat_model`, provider swapped via env var — see below
+
+## Switching LLM provider
+
+Column mapping is rule-based (fuzzy match) by default. If a provider is
+configured, the LLM is called only to break ties on ambiguous column
+mappings — set `LLM_PROVIDER` and `LLM_MODEL` (`app/llm.py`), no code change:
+
+```bash
+# OpenAI
+export LLM_PROVIDER=openai LLM_MODEL=gpt-4o-mini OPENAI_API_KEY=sk-...
+
+# Ollama (local, no key)
+export LLM_PROVIDER=ollama LLM_MODEL=llama3.1
+
+# Gemini
+export LLM_PROVIDER=google_genai LLM_MODEL=gemini-1.5-flash GOOGLE_API_KEY=...
+```
+
+Unset `LLM_PROVIDER` (default) → pure rule-based mapping, no LLM call.
 
 ## Setup
 

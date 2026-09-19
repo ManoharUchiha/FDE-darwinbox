@@ -20,6 +20,8 @@ from datetime import datetime
 import pandas as pd
 import yaml
 
+from .llm import get_chat_model
+
 AMBIGUITY_GAP = 0.08  # if top-2 mapping scores are this close, escalate
 MAX_CLEAN_ATTEMPTS = 2
 
@@ -59,6 +61,27 @@ def score_column(col_name: str, target_field: str) -> float:
     return max(difflib.SequenceMatcher(None, col_n, _norm(c)).ratio() for c in candidates)
 
 
+def llm_break_tie(col_name: str, field_a: str, field_b: str) -> str | None:
+    """Ask the configured LLM to pick between two close mapping candidates.
+    Returns the chosen field name, or None if no model configured / unsure."""
+    model = get_chat_model()
+    if model is None:
+        return None
+    prompt = (
+        f"Source spreadsheet column '{col_name}' maps to one of two target "
+        f"employee-schema fields: '{field_a}' or '{field_b}'. "
+        f"Reply with ONLY the field name, exactly as given, that is the better match. "
+        f"If genuinely unsure, reply UNSURE."
+    )
+    try:
+        reply = model.invoke(prompt).content.strip()
+    except Exception:
+        return None
+    if reply in (field_a, field_b):
+        return reply
+    return None
+
+
 def propose_mapping(columns: list[str], schema: dict) -> dict:
     """For each source column, rank all target fields by similarity.
     Returns {column: {field, score, runner_up_field, runner_up_score}}.
@@ -72,12 +95,20 @@ def propose_mapping(columns: list[str], schema: dict) -> dict:
         )
         best_field, best_score = scored[0]
         runner_field, runner_score = scored[1] if len(scored) > 1 else (None, 0.0)
+        ambiguous = best_score > 0 and (best_score - runner_score) < AMBIGUITY_GAP
+
+        if ambiguous and runner_field:
+            llm_choice = llm_break_tie(col, best_field, runner_field)
+            if llm_choice:
+                best_field = llm_choice
+                ambiguous = False
+
         mapping[col] = {
             "field": best_field,
             "score": round(best_score, 3),
             "runner_up_field": runner_field,
             "runner_up_score": round(runner_score, 3),
-            "ambiguous": best_score > 0 and (best_score - runner_score) < AMBIGUITY_GAP,
+            "ambiguous": ambiguous,
         }
     return mapping
 

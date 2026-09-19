@@ -3,3 +3,7 @@ uvicorn
 pandas
 pyyaml
 openpyxl
+langchain
+langchain-openai
+langchain-ollama
+langchain-google-genai
