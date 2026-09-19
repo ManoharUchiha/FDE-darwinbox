@@ -90,9 +90,6 @@ def retry_push(employee_id: str):
     record = agent.records.get(employee_id)
     if not record:
         raise HTTPException(404, "record not found")
-    if record.get("manager_id") == "ZZZZ":
-        record["manager_id"] = None
-        agent._emit(f"Retry {employee_id}: cleared invalid manager_id before resend")
     result = target_api.push_record(record)
     push_results[employee_id] = result
     agent.audit.append({"ts": "", "action": "retry", "employee_id": employee_id, "detail": result})

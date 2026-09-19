@@ -286,7 +286,34 @@ class MigrationAgent:
             elif not row_ok:
                 self.pending_rows[int(idx)] = record
 
+        self._validate_manager_ids(df, seen_ids)
         self._emit(f"Clean pass complete: {len(self.records)} records ready, {len(self.escalations)} escalations")
+
+    def _validate_manager_ids(self, df: pd.DataFrame, known_ids: set[str]):
+        """manager_id is a foreign key the agent can't guess at — a value
+        that doesn't resolve to any ingested employee_id is exactly the
+        'can't confidently clean' case, so it escalates instead of being
+        silently dropped or fixed."""
+        for idx, row in df.iterrows():
+            record = self.records.get(row.get("employee_id")) or self.pending_rows.get(int(idx))
+            if record is None:
+                continue
+            manager_id = record.get("manager_id")
+            if manager_id and manager_id not in known_ids:
+                emp_id = record.get("employee_id")
+                self.records.pop(emp_id, None)
+                self.pending_rows[int(idx)] = record
+                self.escalations.append({
+                    "id": str(uuid.uuid4()),
+                    "type": "cleanup",
+                    "row_index": int(idx),
+                    "field": "manager_id",
+                    "raw_value": manager_id,
+                    "note": "manager_id does not match any ingested employee_id",
+                    "status": "pending",
+                    "context": f"Row {idx} ({emp_id}): manager_id '{manager_id}' does not match any known employee — fix or clear it",
+                })
+                self._emit(f"Escalating row {idx}: manager_id '{manager_id}' not found among ingested employees", "warn")
 
     def _row_has_pending_escalations(self, row_idx: int) -> bool:
         return any(
