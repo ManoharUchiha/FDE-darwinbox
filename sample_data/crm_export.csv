@@ -1,0 +1,5 @@
+EmployeeCode,Name,Birth Date,Hire Date,Division,Contact Email,Manager,Emp Status
+E006,Rahul Verma,1993-02-18,2021-07-01,Marketing,rahul.verma@corp.com,E001,Active
+E007,Lisa Wong,1989/05/09,2017-01-15,Engineering,lisa.wong@corp.com,E003,On Leave
+E002,Priya Nair,02-11-1988,10/03/2020,Sales,priya.nair@corp.com,E004,Active
+E008,Tom Baker,1995-12-30,2022-02-28,Support,tom.baker@corp.com,ZZZZ,Active

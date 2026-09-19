@@ -1,0 +1,7 @@
+Emp ID,Full Name,DOB,Joining Date,Dept,Email Address,Status
+E001,John Smith,03/14/1990,01/05/2019,Engineering,john.smith@corp.com,Active
+E002,priya nair ,1988-11-02,2020-03-10,Sales,priya.nair@corp.com,Active
+E003,Amit  Kumar,07/22/1985,2018-09-01,Engineering,amit.kumar@corp.com,Terminated
+E004,Sara Lee,14/03/1992,05/01/2021,HR,sara.lee@corp.com,Active
+E001,John Smith,03/14/1990,01/05/2019,Engineering,john.smith@corp.com,Active
+E005,,1991-06-15,2019-11-20,Finance,,Active

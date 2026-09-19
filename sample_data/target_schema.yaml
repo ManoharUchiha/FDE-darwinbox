@@ -1,0 +1,30 @@
+entity: employee
+fields:
+  - name: employee_id
+    type: string
+    required: true
+    unique: true
+  - name: full_name
+    type: string
+    required: true
+  - name: date_of_birth
+    type: date
+    required: false
+  - name: hire_date
+    type: date
+    required: true
+  - name: department
+    type: string
+    required: true
+  - name: email
+    type: string
+    required: true
+    format: email
+  - name: manager_id
+    type: string
+    required: false
+    ref: employee_id
+  - name: status
+    type: enum
+    required: true
+    values: [Active, Terminated, On Leave]
